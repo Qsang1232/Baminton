@@ -30,19 +30,18 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // LƯU Ý: Để cập nhật lại ảnh mới, bạn cần xóa dữ liệu cũ trong Database
-        // Hoặc tạm thời comment dòng if check count() này lại để code chạy đè (cẩn thận duplicate)
+        // Kiểm tra nếu chưa có dữ liệu thì mới tạo
         if (userRepository.count() == 0) {
             seedAllData();
         }
     }
 
     private void seedAllData() {
-        System.out.println(">>> BẮT ĐẦU TẠO DỮ LIỆU MẪU (NEW IMAGES)...");
+        System.out.println(">>> BẮT ĐẦU TẠO DỮ LIỆU MẪU VỚI ẢNH GITHUB...");
 
         List<User> users = seedUsers();
         List<Category> categories = seedCategories();
-        List<Court> courts = seedCourts(categories);
+        List<Court> courts = seedCourts(categories); // Hàm này đã được sửa lại link ảnh
         seedBookings(users, courts);
         seedReviews(users, courts);
 
@@ -97,29 +96,30 @@ public class DataSeeder implements CommandLineRunner {
         return categoryRepository.saveAll(categories);
     }
 
+    // --- ĐÂY LÀ HÀM ĐÃ ĐƯỢC CẬP NHẬT LINK GITHUB ---
     private List<Court> seedCourts(List<Category> categories) {
         List<Court> courts = new ArrayList<>();
         Random random = new Random();
 
-   
-String domain = "localhost:8080"; 
-String baseUrl = "http://" + domain + "/images/";
+        // 1. LINK GITHUB RAW (Trỏ thẳng vào kho ảnh của bạn)
+        String baseUrl = "https://raw.githubusercontent.com/Qsang1232/BackEnd_ChuyenDeThucTap/main/src/main/resources/static/images/";
 
-int totalImages = 25; // Số lượng ảnh muốn tạo
-String[] images = new String[totalImages]; // Khởi tạo mảng
+        int totalImages = 25; // Số lượng ảnh bạn đã up (san1 -> san25)
+        String[] images = new String[totalImages];
 
-for (int i = 0; i < totalImages; i++) {
-   
-    images[i] = baseUrl + "san" + (i + 1) + ".jpg";
-}
+        // 2. VÒNG LẶP TẠO LINK ẢNH
+        for (int i = 0; i < totalImages; i++) {
+            // Kết quả sẽ là: .../images/san1.jpg, .../images/san2.jpg
+            images[i] = baseUrl + "san" + (i + 1) + ".jpg";
+        }
 
-        int courtCount = 0; // Bắt đầu đếm từ 0 để dùng cho mảng images
+        int courtCount = 0; // Biến đếm để lấy ảnh từ mảng images
         for (Category cat : categories) {
-            int courtsInCat = random.nextInt(3) + 3; // Mỗi quận có 3-5 sân
+            int courtsInCat = random.nextInt(3) + 3; // Mỗi quận 3-5 sân
 
             for (int i = 0; i < courtsInCat; i++) {
-                // LOGIC QUAN TRỌNG: Dùng Modulo (%) để lấy ảnh tuần tự, tránh bị trùng lặp liên tiếp
-                // và đảm bảo luôn có ảnh dù số lượng sân nhiều hơn số lượng ảnh.
+                // LOGIC QUAN TRỌNG: Dùng Modulo (%) để lấy ảnh tuần tự
+                // Đảm bảo không bị lỗi IndexOutOfBounds và ảnh lặp lại đều đặn
                 String imgUrl = images[courtCount % images.length];
 
                 BigDecimal price = BigDecimal.valueOf(50000 + (random.nextInt(10) * 10000));
@@ -128,7 +128,7 @@ for (int i = 0; i < totalImages; i++) {
                         .name("Sân " + cat.getName() + " - Số " + (i + 1))
                         .description("Sân thảm tiêu chuẩn thi đấu, ánh sáng tốt. Phù hợp cho cả tập luyện và giao lưu.")
                         .address(random.nextInt(100) + " Đường Số " + (i + 1) + ", " + cat.getName())
-                        .imageUrl(imgUrl)
+                        .imageUrl(imgUrl) // Lưu link Online vào DB
                         .pricePerHour(price)
                         .category(cat)
                         .openingTime(LocalTime.of(5, 0))
@@ -136,7 +136,7 @@ for (int i = 0; i < totalImages; i++) {
                         .build();
                 
                 courts.add(court);
-                courtCount++; // Tăng biến đếm để sân sau lấy ảnh tiếp theo
+                courtCount++; // Tăng biến đếm
             }
         }
         return courtRepository.saveAll(courts);
