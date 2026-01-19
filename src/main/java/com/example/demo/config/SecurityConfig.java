@@ -63,19 +63,23 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
+   @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Cho phép các domain này
+        
+        // 👇 CẤU HÌNH CHUẨN: Cho phép Localhost và Vercel
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",
-            "https://badminton-sals.vercel.app"
+            "http://localhost:3000",              // Để bạn test ở máy nhà
+            "https://badminton-sals.vercel.app"   // Link Frontend chính thức (NHỚ BỎ DẤU / Ở CUỐI)
         ));
-        // Cho phép đầy đủ các method
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
-        // Cho phép mọi header
+        
+        // Cho phép các header cần thiết (Authorization để gửi Token)
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "x-auth-token"));
-        // Cho phép gửi credentials (cookie/token)
+        
+        // 👇 QUAN TRỌNG: Cho phép gửi Cookie/Token xác thực
+        // Dòng này bắt buộc phải là TRUE khi bạn chỉ định rõ domain (không dùng *)
         configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
