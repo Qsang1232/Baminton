@@ -30,23 +30,26 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // Kích hoạt CORS với config bên dưới
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) 
             .authorizeHttpRequests(auth -> auth
+                // QUAN TRỌNG: Cho phép method OPTIONS đi qua mà không cần token
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
+                
                 // PUBLIC
                 .requestMatchers("/images/**", "/api/auth/**", "/api/payment/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/courts/**", "/api/categories/**", "/api/reviews/**", "/api/bookings/check-availability").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
-                // ADMIN (Thêm quyền Duyệt/Hủy/Xem tất cả tại đây)
+                // ADMIN & USER routes (Giữ nguyên code của bạn)
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/bookings/all").hasRole("ADMIN")
-                .requestMatchers("/api/bookings/*/confirm").hasRole("ADMIN") // <--- QUAN TRỌNG: Cho phép duyệt
-                .requestMatchers("/api/bookings/*/cancel").hasAnyRole("ADMIN", "USER") // Hủy thì cả 2 đều được (Service sẽ check kỹ hơn)
+                .requestMatchers("/api/bookings/*/confirm").hasRole("ADMIN")
+                .requestMatchers("/api/bookings/*/cancel").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
 
-                // USER & ADMIN
                 .requestMatchers("/api/bookings/**").authenticated()
                 .requestMatchers("/api/reviews").authenticated()
                 .requestMatchers("/api/users/**").authenticated()
@@ -63,13 +66,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-           configuration.setAllowedOrigins(List.of(
-            "http://localhost:3000",                  // Cho phép máy nhà
-            "https://badminton-sals.vercel.app"       // QUAN TRỌNG: Cho phép link Vercel của bạn
+        // Cho phép các domain này
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",
+            "https://badminton-sals.vercel.app"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // Cho phép đầy đủ các method
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
+        // Cho phép mọi header
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "x-auth-token"));
+        // Cho phép gửi credentials (cookie/token)
         configuration.setAllowCredentials(true);
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
