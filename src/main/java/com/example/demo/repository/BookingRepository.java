@@ -36,6 +36,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT SUM(b.totalPrice) FROM Booking b WHERE b.status != 'CANCELLED'")
     Double calculateTotalRevenue();
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE DATE(b.startTime) = CURRENT_DATE")
+    // SỬA LỖI Ở ĐÂY: Thay DATE(b.startTime) bằng CAST(b.startTime AS date)
+    @Query("SELECT COUNT(b) FROM Booking b WHERE CAST(b.startTime AS date) = CURRENT_DATE")
     Long countBookingsToday();
 }
