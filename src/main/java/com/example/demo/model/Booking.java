@@ -20,7 +20,11 @@ public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    // ... các trường cũ (id, startTime, endTime...)
 
+    // --- THÊM DÒNG NÀY ---
+    @jakarta.persistence.Column(columnDefinition = "boolean default false")
+    private boolean hasReviewed = false;
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

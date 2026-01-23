@@ -7,7 +7,6 @@ import com.example.demo.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,28 +19,26 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    // 1. Tạo đánh giá (Cần đăng nhập)
+    // API tạo đánh giá
     @PostMapping
-    public ResponseEntity<ApiResponse<Review>> createReview(@RequestBody ReviewRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUsername = authentication.getName();
-
-        Review newReview = reviewService.createReview(request, currentUsername);
-
-        return new ResponseEntity<>(ApiResponse.<Review>builder()
+    public ResponseEntity<?> createReview(@RequestBody ReviewRequest request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        Review savedReview = reviewService.createReview(request, username);
+        
+        return new ResponseEntity<>(ApiResponse.builder()
                 .success(true)
-                .message("Đánh giá thành công")
-                .data(newReview)
+                .message("Đánh giá thành công!")
+                .data(savedReview)
                 .build(), HttpStatus.CREATED);
     }
 
-    // 2. Xem đánh giá của 1 sân (Công khai)
+    // API xem đánh giá theo sân
     @GetMapping("/court/{courtId}")
-    public ResponseEntity<ApiResponse<List<Review>>> getReviewsByCourt(@PathVariable Long courtId) {
+    public ResponseEntity<?> getReviewsByCourt(@PathVariable Long courtId) {
         List<Review> reviews = reviewService.getReviewsForCourt(courtId);
-        return ResponseEntity.ok(ApiResponse.<List<Review>>builder()
+        return ResponseEntity.ok(ApiResponse.builder()
                 .success(true)
-                .message("Danh sách đánh giá")
                 .data(reviews)
                 .build());
     }

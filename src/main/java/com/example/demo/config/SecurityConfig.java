@@ -25,52 +25,64 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
+    http
+        .csrf(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        .sessionManagement(session ->
+            session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        )
+        .authorizeHttpRequests(auth -> auth
 
-                // ✅ BẮT BUỘC cho CORS
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            // 1. OPTIONS cho CORS (Luôn cho phép đầu tiên)
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // ===== PUBLIC =====
-                .requestMatchers(
-                        "/api/auth/**",
-                        "/api/payment/**",
-                        "/api/courts/**",
-                        "/api/categories/**",
-                        "/api/reviews/**",
-                        "/api/bookings/**",
-                        "/images/**",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**"
-                ).permitAll()
-                  // ADMIN & USER routes (Giữ nguyên code của bạn)
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/bookings/all").hasRole("ADMIN")
-                .requestMatchers("/api/bookings/*/confirm").hasRole("ADMIN")
-                .requestMatchers("/api/bookings/*/cancel").hasAnyRole("ADMIN", "USER")
-                .requestMatchers(HttpMethod.POST, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
+            // 2. TÀI NGUYÊN CÔNG KHAI HOÀN TOÀN (Ảnh, Login, Swagger, Payment Callback)
+            .requestMatchers(
+                    "/api/auth/**",
+                    "/api/payment/**",  // Để Momo/VNPay gọi lại không cần login
+                    "/images/**", 
+                     "/uploads/**",      // <--- THÊM: Cho phép xem ảnh upload
+                        "/api/upload",       // Quan trọng: Để load ảnh sân
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**"
+            ).permitAll()
 
-                .requestMatchers("/api/bookings/**").authenticated()
-                .requestMatchers("/api/reviews").authenticated()
-                .requestMatchers("/api/users/**").authenticated()
-                // ===== KHÁC =====
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider)
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            // 3. CHO PHÉP XEM DỮ LIỆU (Chỉ Method GET) -> Khách vãng lai xem được
+            .requestMatchers(HttpMethod.GET, 
+                    "/api/courts/**", 
+                    "/api/categories/**", 
+                    "/api/reviews/**"
+            ).permitAll()
 
-        return http.build();
-    }
+            // 4. QUYỀN ADMIN (Thứ tự quan trọng)
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            .requestMatchers("/api/bookings/all").hasRole("ADMIN")
+            .requestMatchers("/api/bookings/*/confirm").hasRole("ADMIN")
+            
+            // Chỉ Admin mới được Thêm/Sửa/Xóa Sân & Danh mục
+            .requestMatchers(HttpMethod.POST, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.DELETE, "/api/courts/**", "/api/categories/**").hasRole("ADMIN")
+
+            // 5. CÁC QUYỀN KHÁC (USER & ADMIN)
+            .requestMatchers("/api/bookings/*/cancel").hasAnyRole("ADMIN", "USER")
+            
+            // Booking và Review bắt buộc phải đăng nhập
+            .requestMatchers("/api/bookings/**").authenticated()
+            .requestMatchers("/api/reviews/**").authenticated() // POST review cần login
+            .requestMatchers("/api/users/**").authenticated()
+
+            // 6. CÒN LẠI KHÓA HẾT
+            .anyRequest().authenticated()
+        )
+        .authenticationProvider(authenticationProvider)
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+}
 
     // ===== CORS =====
     @Bean

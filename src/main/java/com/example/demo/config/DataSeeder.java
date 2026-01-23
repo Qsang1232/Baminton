@@ -96,51 +96,48 @@ public class DataSeeder implements CommandLineRunner {
         return categoryRepository.saveAll(categories);
     }
 
-    // --- ĐÂY LÀ HÀM ĐÃ ĐƯỢC CẬP NHẬT LINK GITHUB ---
-    private List<Court> seedCourts(List<Category> categories) {
-        List<Court> courts = new ArrayList<>();
-        Random random = new Random();
+   private List<Court> seedCourts(List<Category> categories) {
+    List<Court> courts = new ArrayList<>();
+    Random random = new Random();
 
-        // 1. LINK GITHUB RAW (Trỏ thẳng vào kho ảnh của bạn)
-        String baseUrl = "https://raw.githubusercontent.com/Qsang1232/BackEnd_ChuyenDeThucTap/main/src/main/resources/static/images/";
+    // --- SỬA ĐỔI QUAN TRỌNG: DÙNG ĐƯỜNG DẪN TƯƠNG ĐỐI ---
+    // Không dùng https://raw.github... nữa
+    
+    int totalImages = 25; // Số lượng ảnh bạn có trong folder static/images
+    String[] imagePaths = new String[totalImages];
 
-        int totalImages = 25; // Số lượng ảnh bạn đã up (san1 -> san25)
-        String[] images = new String[totalImages];
-
-        // 2. VÒNG LẶP TẠO LINK ẢNH
-        for (int i = 0; i < totalImages; i++) {
-            // Kết quả sẽ là: .../images/san1.jpg, .../images/san2.jpg
-            images[i] = baseUrl + "san" + (i + 1) + ".jpg";
-        }
-
-        int courtCount = 0; // Biến đếm để lấy ảnh từ mảng images
-        for (Category cat : categories) {
-            int courtsInCat = random.nextInt(3) + 3; // Mỗi quận 3-5 sân
-
-            for (int i = 0; i < courtsInCat; i++) {
-                // LOGIC QUAN TRỌNG: Dùng Modulo (%) để lấy ảnh tuần tự
-                // Đảm bảo không bị lỗi IndexOutOfBounds và ảnh lặp lại đều đặn
-                String imgUrl = images[courtCount % images.length];
-
-                BigDecimal price = BigDecimal.valueOf(50000 + (random.nextInt(10) * 10000));
-
-                Court court = Court.builder()
-                        .name("Sân " + cat.getName() + " - Số " + (i + 1))
-                        .description("Sân thảm tiêu chuẩn thi đấu, ánh sáng tốt. Phù hợp cho cả tập luyện và giao lưu.")
-                        .address(random.nextInt(100) + " Đường Số " + (i + 1) + ", " + cat.getName())
-                        .imageUrl(imgUrl) // Lưu link Online vào DB
-                        .pricePerHour(price)
-                        .category(cat)
-                        .openingTime(LocalTime.of(5, 0))
-                        .closingTime(LocalTime.of(23, 0))
-                        .build();
-                
-                courts.add(court);
-                courtCount++; // Tăng biến đếm
-            }
-        }
-        return courtRepository.saveAll(courts);
+    for (int i = 0; i < totalImages; i++) {
+        // Tạo đường dẫn local: /images/san1.jpg
+        imagePaths[i] = "/images/san" + (i + 1) + ".jpg";
     }
+
+    int courtCount = 0; 
+    for (Category cat : categories) {
+        int courtsInCat = random.nextInt(3) + 3; 
+
+        for (int i = 0; i < courtsInCat; i++) {
+            // Lấy đường dẫn ảnh từ mảng (chia lấy dư để xoay vòng ảnh)
+            String imgUrl = imagePaths[courtCount % imagePaths.length];
+
+            BigDecimal price = BigDecimal.valueOf(50000 + (random.nextInt(10) * 10000));
+
+            Court court = Court.builder()
+                    .name("Sân " + cat.getName() + " - Số " + (i + 1))
+                    .description("Sân thảm tiêu chuẩn thi đấu, ánh sáng tốt.")
+                    .address(random.nextInt(100) + " Đường Số " + (i + 1) + ", " + cat.getName())
+                    .imageUrl(imgUrl) // <--- LƯU Ý: Biến này bây giờ là /images/sanX.jpg
+                    .pricePerHour(price)
+                    .category(cat)
+                    .openingTime(LocalTime.of(5, 0))
+                    .closingTime(LocalTime.of(23, 0))
+                    .build();
+            
+            courts.add(court);
+            courtCount++; 
+        }
+    }
+    return courtRepository.saveAll(courts);
+}
 
     private void seedBookings(List<User> users, List<Court> courts) {
         List<Booking> bookings = new ArrayList<>();

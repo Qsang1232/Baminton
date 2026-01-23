@@ -22,40 +22,40 @@ public class ReviewService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
 
-    // Lấy danh sách đánh giá của 1 sân (Cho trang chi tiết sân)
-    public List<Review> getReviewsForCourt(Long courtId) {
-        return reviewRepository.findByCourtId(courtId);
-    }
-
-    // Tạo đánh giá mới (Dựa trên Booking ID để đảm bảo đã đặt sân mới được đánh giá)
+    // Tạo đánh giá mới (Đã thêm logic chặn spam)
     @Transactional
     public Review createReview(ReviewRequest request, String username) {
-        // 1. Tìm User đang đăng nhập
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // 2. Tìm đơn đặt sân (Booking)
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn đặt với ID: " + request.getBookingId()));
 
-        // 3. Kiểm tra quyền: Chỉ người đặt đơn này mới được đánh giá
+        Booking booking = bookingRepository.findById(request.getBookingId())
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn đặt sân không tồn tại"));
+
         if (!booking.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền đánh giá đơn hàng của người khác!");
+            throw new RuntimeException("Bạn không có quyền đánh giá đơn hàng của người khác");
         }
 
-        // 4. (Tùy chọn) Kiểm tra xem đơn đã hoàn thành chưa?
-        // if (!"COMPLETED".equals(booking.getStatus()) && !"CONFIRMED".equals(booking.getStatus())) {
-        //    throw new RuntimeException("Bạn chỉ được đánh giá khi đã hoàn thành buổi chơi.");
-        // }
+        // --- MỚI: KIỂM TRA ĐÃ ĐÁNH GIÁ CHƯA ---
+        if (booking.isHasReviewed()) {
+            throw new RuntimeException("Đơn hàng này bạn đã đánh giá rồi!");
+        }
 
-        // 5. Lưu đánh giá
         Review review = Review.builder()
-                .user(user)
-                .court(booking.getCourt()) // Lấy thông tin sân từ đơn đặt
                 .rating(request.getRating())
                 .comment(request.getComment())
+                .user(user)
+                .court(booking.getCourt())
                 .build();
 
+        // --- MỚI: CẬP NHẬT TRẠNG THÁI BOOKING ---
+        booking.setHasReviewed(true);
+        bookingRepository.save(booking);
+
         return reviewRepository.save(review);
+    }
+
+    // Lấy danh sách đánh giá của 1 sân (Quan trọng: Đừng xóa hàm này)
+    public List<Review> getReviewsForCourt(Long courtId) {
+        return reviewRepository.findByCourtId(courtId);
     }
 }
